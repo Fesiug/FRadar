@@ -21,12 +21,20 @@ local myMat = CreateMaterial( "RadarRTMat", "UnlitGeneric", {
 local veh = 0
 local sc = 1
 
+local mat_c = Material("vgui/circle")
+local mat_g = Material("vgui/gradient-d")
+
 hook.Add( "Think", "FRadar_Think", function()
 	veh = math.Approach( veh, LocalPlayer():InVehicle() and 1 or 0, FrameTime() )
-	sc = math.Approach( sc, input.IsKeyDown( KEY_MINUS ) and 1 or input.IsKeyDown( KEY_EQUAL ) and 2 or sc, FrameTime() / 0.5 )
+	sc = math.Approach( sc, input.IsKeyDown( KEY_MINUS ) and 1 or input.IsKeyDown( KEY_EQUAL ) and 2 or sc, FrameTime()/0.5 )
 	--fovdesire = math.Approach( fovdesire, LocalPlayer():InVehicle() and 30 or 90, FrameTime()*45*1.33 )
 	--tiltdesire = math.Approach( tiltdesire, LocalPlayer():InVehicle() and 30 or 90, FrameTime()*90*1.33 )
 end )
+
+surface.CreateFont("TEST-1", {
+	font = "Arial",
+	size = 48,
+})
 	
 hook.Add("HUDPaint", "FRadar_HUDPaint", function()
 	local size = 64
@@ -38,7 +46,7 @@ hook.Add("HUDPaint", "FRadar_HUDPaint", function()
 
 	local angles = Angle( Lerp( vehl, 90, 30 ), EyeAngles().y-90, 0 )
 	local norigin = -angles:Forward()*dist
-	norigin:Add( angles:Up() * Lerp( vehl, 4, 4 ) * sc )
+	norigin:Add( angles:Up() * Lerp( vehl, 0, 4 ) * sc )
 	cam.Start( {
 		x = 0,
 		y = 0,
@@ -70,21 +78,32 @@ hook.Add("HUDPaint", "FRadar_HUDPaint", function()
 
 	for i, ent in ents.Iterator() do
 		local rs = (size/64)
+		local mat
 		if ent:IsPlayer() then
-			Col.r = 120
-			Col.g = 120
-			Col.b = 255
-			rs = rs * 4
+			if ent == LocalPlayer() then
+				Col.r = 120
+				Col.g = 120
+				Col.b = 255
+				rs = rs * 4
+			else
+				Col.r = 120
+				Col.g = 150
+				Col.b = 120
+				rs = rs * 2
+			end
+			mat = Material("icon16/status_offline.png")
 		elseif ent:IsNPC() or ent:IsNextBot() then
 			Col.r = 120
 			Col.g = 170
 			Col.b = 120
 			rs = rs * 2
-		--elseif ent:IsVehicle() then
-		--	Col.r = 170
-		--	Col.g = 170
-		--	Col.b = 120
-		--	rs = rs * 0
+		elseif ent:IsVehicle() then
+			if ent:GetClass() == "prop_vehicle_prisoner_pod" then continue end
+			Col.r = 170
+			Col.g = 170
+			Col.b = 120
+			rs = rs * 0
+			mat = Material("icon16/car.png")
 		else
 			continue
 		end
@@ -102,25 +121,42 @@ hook.Add("HUDPaint", "FRadar_HUDPaint", function()
 		nvec = nvec + ang:Right() * cx
 		nvec = nvec + ang:Forward() * cy
 
-		local ct = CurTime()
-		ct = math.sin( ct*30*math.pi )*1
-		ct = math.max( 1, ct )
+		local ct = 4
 
-		local eang = Angle( 0, ent:GetAngles().y + ang.y - 90, 0 )
+		local eang = Angle( 0, (ent.InVehicle and ent:InVehicle() and ent:GetAngles() or ent:EyeAngles()).y + ang.y - 90, 0 )
+		local e_f, e_r = eang:Forward(), eang:Right()
 
-		render.SetMaterial( Material("vgui/circle") )
-		render.DrawQuadEasy( nvec, vector_up, ct, ct, Col, 0 )
+		Col.a = 255
+		render.SetMaterial( mat_g )
+		render.DrawQuad(
+			nvec + (e_f * rs) + (e_r * -rs),
+			nvec + (e_f * rs) + (e_r * rs),
+			nvec,
+			nvec,
+			Col )
+		Col.a = 255
 
-		render.SetMaterial( Material("vgui/gradient-d") )
-		render.DrawQuad( nvec + (eang:Forward() * rs) +  (eang:Right() * -rs), nvec + (eang:Forward() * rs) +  (eang:Right() * rs), nvec, nvec, Col )
+		-- Icon always should look at the viewer
+		eang.y = angles.y-180
+		e_f, e_r = eang:Forward(), eang:Right()
 
-		
+		render.SetMaterial( mat or mat_c )
+		render.DrawQuad(
+			nvec - e_f + e_r,
+			nvec - e_f - e_r,
+			nvec + e_f - e_r,
+			nvec + e_f + e_r,
+			Col )
 	end
 	cam.End()
 	render.OverrideAlphaWriteEnable( false )
 	render.PopRenderTarget()
 
-	local Bx, By, Bb, Bw, Bh = s(20), s(20), s(4), s(128 * sc), s(128 * sc)
+	local cool = sc - 1
+	local Bx, By, Bb, Bw, Bh = s(20), s(20), s(4), s(Lerp( cool, 128, 128*3 ) ), s(Lerp( cool, 128, 128*3 ) )
+
+	--Bx = Lerp( cool, Bx, ScrW()/2 - Bw/2 )
+	--By = Lerp( cool, By, ScrH()/2 - Bh/2 )
 
 	local s = ScreenScaleH
 	draw.RoundedBox( Bb, Bx, By, Bw, Bh, cb )
