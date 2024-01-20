@@ -31,22 +31,18 @@ hook.Add( "Think", "FRadar_Think", function()
 	--tiltdesire = math.Approach( tiltdesire, LocalPlayer():InVehicle() and 30 or 90, FrameTime()*90*1.33 )
 end )
 
-surface.CreateFont("TEST-1", {
-	font = "Arial",
-	size = 48,
-})
-	
-hook.Add("HUDPaint", "FRadar_HUDPaint", function()
+function AssembleRadarRT( height, fov, tilt, additional )
 	local size = 64
-	local dist = 30
 	render.PushRenderTarget( tex )
 	render.OverrideAlphaWriteEnable( true, true )
 
-	local vehl = math.ease.InOutSine( veh )
-
-	local angles = Angle( Lerp( vehl, 90, 30 ), EyeAngles().y-90, 0 )
-	local norigin = -angles:Forward()*dist
-	norigin:Add( angles:Up() * Lerp( vehl, 0, 4 ) * sc )
+	local angles = Angle( tilt, EyeAngles().y-90, 0 )
+	local norigin = -angles:Forward()*height
+	if additional then
+		norigin:Add( angles:Right() * additional.x )
+		norigin:Add( angles:Forward() * additional.y )
+		norigin:Add( angles:Up() * additional.z )
+	end
 	cam.Start( {
 		x = 0,
 		y = 0,
@@ -55,7 +51,7 @@ hook.Add("HUDPaint", "FRadar_HUDPaint", function()
 		origin = norigin,
 		angles = angles,
 		aspect = 1,
-		fov = Lerp( vehl, 45 * sc, 20 * sc ),
+		fov = fov,
 	} )
 		
 	render.ClearDepth()
@@ -66,12 +62,9 @@ hook.Add("HUDPaint", "FRadar_HUDPaint", function()
 
 	vec.x = vec.x - (size/2)
 	vec.y = vec.y - (size/2)
-
 	vec.z = 0
-	--vec.z = vec.z - 64+8
 
 	local ang = Angle( 0, 0 or EyeAngles().y, 0 )
-	--vec = vec + ang:Forward()*32
 	
 	render.SetMaterial( mat )
 	render.DrawQuadEasy( vec, vector_up, size, size, color_white, ang.y )
@@ -151,6 +144,16 @@ hook.Add("HUDPaint", "FRadar_HUDPaint", function()
 	cam.End()
 	render.OverrideAlphaWriteEnable( false )
 	render.PopRenderTarget()
+end
+	
+hook.Add("HUDPaint", "FRadar_HUDPaint", function()
+	local vehl = math.ease.InOutSine( veh )
+	local additional = Vector(
+		0,
+		0,
+		Lerp( vehl, 0, 4 )
+	)
+	AssembleRadarRT( 30, Lerp( vehl, 45 * sc, 20 * sc ), Lerp( vehl, 90, 30 ), additional )
 
 	local cool = sc - 1
 	local Bx, By, Bb, Bw, Bh = s(20), s(20), s(4), s(Lerp( cool, 128, 128*3 ) ), s(Lerp( cool, 128, 128*3 ) )
