@@ -1,37 +1,24 @@
+FRadar = {}
+
 local mat = Material("fradar/rp_saemchet_radar.png", "smooth")
 local ms, mx, my = 8.63, -5632, 4992
 
-local s = ScreenScaleH
-local cb = Color( 0, 0, 0, 200 )
 local Col = Color( 0, 0, 0 )
 
--- Give the RT a size
-local TEX_SIZE = 512
-
 -- Create the RT
+local TEX_SIZE = 512
 local tex = GetRenderTarget( "RadarRT", TEX_SIZE, TEX_SIZE )
 
-local myMat = CreateMaterial( "RadarRTMat", "UnlitGeneric", {
+FRadar.Mat = CreateMaterial( "RadarRTMat", "UnlitGeneric", {
 	["$basetexture"] = tex:GetName(), -- Make the material use our render target texture
 	["$translucent"] = 1,
 	["$vertexcolor"] = 1,
 	["$vertexalpha"] = 1,
 } )
 
-local veh = 0
-local sc = 1
-
 local mat_c = Material("vgui/circle")
 local mat_g = Material("vgui/gradient-d")
-
-hook.Add( "Think", "FRadar_Think", function()
-	veh = math.Approach( veh, LocalPlayer():InVehicle() and 1 or 0, FrameTime() )
-	sc = math.Approach( sc, input.IsKeyDown( KEY_MINUS ) and 1 or input.IsKeyDown( KEY_EQUAL ) and 2 or sc, FrameTime()/0.5 )
-	--fovdesire = math.Approach( fovdesire, LocalPlayer():InVehicle() and 30 or 90, FrameTime()*45*1.33 )
-	--tiltdesire = math.Approach( tiltdesire, LocalPlayer():InVehicle() and 30 or 90, FrameTime()*90*1.33 )
-end )
-
-function AssembleRadarRT( height, fov, tilt, additional )
+function FRadar.AssembleRadarRT( height, fov, tilt, additional, aspect )
 	local size = 64
 	render.PushRenderTarget( tex )
 	render.OverrideAlphaWriteEnable( true, true )
@@ -50,12 +37,12 @@ function AssembleRadarRT( height, fov, tilt, additional )
 		h = TEX_SIZE,
 		origin = norigin,
 		angles = angles,
-		aspect = 1,
+		aspect = aspect or 1,
 		fov = fov,
 	} )
 		
 	render.ClearDepth()
-	render.Clear( 0, 0, 0, 0 )
+	render.Clear( 0, 0, 0, 255 )
 	local vec = Vector()
 	vec.x = -(LocalPlayer():EyePos().y - my) / (ms * 1024) * size
 	vec.y = (LocalPlayer():EyePos().x - mx) / (ms * 1024) * size
@@ -145,27 +132,3 @@ function AssembleRadarRT( height, fov, tilt, additional )
 	render.OverrideAlphaWriteEnable( false )
 	render.PopRenderTarget()
 end
-	
-hook.Add("HUDPaint", "FRadar_HUDPaint", function()
-	local vehl = math.ease.InOutSine( veh )
-	local additional = Vector(
-		0,
-		0,
-		Lerp( vehl, 0, 4 )
-	)
-	AssembleRadarRT( 30, Lerp( vehl, 45 * sc, 20 * sc ), Lerp( vehl, 90, 30 ), additional )
-
-	local cool = sc - 1
-	local Bx, By, Bb, Bw, Bh = s(20), s(20), s(4), s(Lerp( cool, 128, 128*3 ) ), s(Lerp( cool, 128, 128*3 ) )
-
-	--Bx = Lerp( cool, Bx, ScrW()/2 - Bw/2 )
-	--By = Lerp( cool, By, ScrH()/2 - Bh/2 )
-
-	local s = ScreenScaleH
-	draw.RoundedBox( Bb, Bx, By, Bw, Bh, cb )
-
-	surface.SetDrawColor( 255, 255, 255, 255 )
-	surface.SetMaterial( myMat )
-	surface.DrawTexturedRect( Bx + Bb, By + Bb, Bw - Bb - Bb, Bh - Bb - Bb )
-	
-end)
